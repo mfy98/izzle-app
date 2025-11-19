@@ -332,7 +332,7 @@ services:
       - sh
       - -c
       - |
-        if [ ! -d node_modules ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+        if [ ! -d node_modules ] || [ -z "$$(ls -A node_modules 2>/dev/null)" ]; then
           echo '🧩 Installing deps...'
           npm ci || npm install --no-audit --no-fund
         fi
