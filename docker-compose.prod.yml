@@ -1,0 +1,321 @@
+version: '3.8'
+
+# Production Docker Compose Configuration
+# IP: 31.97.126.71
+# Domain: srv1140142.hstgr.cloud
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: cursor-raffle-db-prod
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cursor_raffle}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "127.0.0.1:5432:5432"  # Only bind to localhost for security
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+      - ./backup/wal_archive:/backups/wal_archive
+    command:
+      - "postgres"
+      - "-c"
+      - "archive_mode=on"
+      - "-c"
+      - "archive_command=test ! -f /backups/wal_archive/%f && cp %p /backups/wal_archive/%f"
+      - "-c"
+      - "wal_level=replica"
+      - "-c"
+      - "max_wal_senders=3"
+      - "-c"
+      - "hot_standby=on"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=256MB"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cursor-raffle-network-prod
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # PostgreSQL Backup Service
+  postgres-backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    container_name: cursor-raffle-backup-prod
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-cursor_raffle}
+      BACKUP_DIR: /backups
+    volumes:
+      - backup_data_prod:/backups
+      - ./backup:/backup
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cursor-raffle-network-prod
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Run backup daily at 2 AM UTC
+    command: >
+      sh -c "
+        /backup/postgres-backup.sh backup;
+        while true; do
+          sleep 86400;
+          /backup/postgres-backup.sh backup;
+        done"
+
+  # Postgres Exporter for Monitoring
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: cursor-raffle-postgres-exporter-prod
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cursor_raffle}?sslmode=disable"
+    ports:
+      - "127.0.0.1:9187:9187"  # Only bind to localhost
+    depends_on:
+      - postgres
+    networks:
+      - cursor-raffle-network-prod
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Node Exporter for System Metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: cursor-raffle-node-exporter-prod
+    ports:
+      - "127.0.0.1:9100:9100"  # Only bind to localhost
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - cursor-raffle-network-prod
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: cursor-raffle-prometheus-prod
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "127.0.0.1:9090:9090"  # Only bind to localhost
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+      - prometheus_data_prod:/prometheus
+    depends_on:
+      - postgres-exporter
+      - node-exporter
+    networks:
+      - cursor-raffle-network-prod
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: cursor-raffle-grafana-prod
+    ports:
+      - "127.0.0.1:3001:3000"  # Only bind to localhost
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+      GF_SERVER_ROOT_URL: http://srv1140142.hstgr.cloud:3001
+    volumes:
+      - grafana_data_prod:/var/lib/grafana
+      - ./monitoring/grafana:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - cursor-raffle-network-prod
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Alertmanager
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: cursor-raffle-alertmanager-prod
+    ports:
+      - "127.0.0.1:9093:9093"  # Only bind to localhost
+    volumes:
+      - ./monitoring/alertmanager/config.yml:/etc/alertmanager/config.yml
+      - alertmanager_data_prod:/alertmanager
+    depends_on:
+      - prometheus
+    networks:
+      - cursor-raffle-network-prod
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # MinIO - Object Storage (S3 Compatible)
+  minio:
+    image: minio/minio:latest
+    container_name: cursor-raffle-minio-prod
+    ports:
+      - "127.0.0.1:9000:9000"  # API - Only bind to localhost
+      - "127.0.0.1:9001:9001"  # Console - Only bind to localhost
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data_prod:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - cursor-raffle-network-prod
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cursor-raffle-backend-prod
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-cursor_raffle}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-validate}
+      SPRING_SECURITY_JWT_SECRET: ${SPRING_SECURITY_JWT_SECRET}
+      SPRING_SECURITY_JWT_EXPIRATION: ${SPRING_SECURITY_JWT_EXPIRATION:-86400000}
+      SPRING_SECURITY_JWT_REFRESH_EXPIRATION: ${SPRING_SECURITY_JWT_REFRESH_EXPIRATION:-604800000}
+      SERVER_PORT: 8080
+      SPRING_PROFILES_ACTIVE: prod,docker
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus,metrics
+      MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: true
+      STORAGE_S3_ENDPOINT: http://minio:9000
+      STORAGE_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      STORAGE_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-cursor-raffle-ads}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://srv1140142.hstgr.cloud,http://31.97.126.71,https://srv1140142.hstgr.cloud}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8080:8080"  # Public access for API
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - cursor-raffle-network-prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # React Native Frontend (Production Build)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner  # Production static build
+    container_name: cursor-raffle-frontend-prod
+    environment:
+      EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-http://31.97.126.71:8080/api}
+      NODE_ENV: production
+    ports:
+      - "80:8081"  # Standard HTTP port (HTTPS için Nginx reverse proxy kullanın)
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - cursor-raffle-network-prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8081 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_data_prod:
+    driver: local
+  backup_data_prod:
+    driver: local
+  prometheus_data_prod:
+    driver: local
+  grafana_data_prod:
+    driver: local
+  alertmanager_data_prod:
+    driver: local
+  minio_data_prod:
+    driver: local
+
+networks:
+  cursor-raffle-network-prod:
+    driver: bridge
+
