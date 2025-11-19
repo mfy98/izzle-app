@@ -328,12 +328,15 @@ services:
       - /app/.expo
     stdin_open: true
     tty: true
-    command: >
-      sh -c "
-        if [ ! -d node_modules ] || [ -z \"$(ls -A node_modules 2>/dev/null)\" ]; then
-          echo '🧩 Installing deps...'; (npm ci || npm install --no-audit --no-fund);
-        fi;
-        npx expo start --tunnel --port 8081"
+    command:
+      - sh
+      - -c
+      - |
+        if [ ! -d node_modules ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+          echo '🧩 Installing deps...'
+          npm ci || npm install --no-audit --no-fund
+        fi
+        npx expo start --tunnel --port 8081
     logging:
       driver: "json-file"
       options:
