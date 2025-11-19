@@ -272,7 +272,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # React Native Frontend (Production Build)
+  # React Native Frontend (Production Build - Web)
   frontend:
     build:
       context: .
@@ -283,7 +283,7 @@ services:
       EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-http://31.97.126.71:8080/api}
       NODE_ENV: production
     ports:
-      - "127.0.0.1:8081:8081"  # Standard HTTP port (HTTPS için Nginx reverse proxy kullanın)
+      - "80:8081"  # Standard HTTP port (HTTPS için Nginx reverse proxy kullanın)
     depends_on:
       backend:
         condition: service_started
@@ -295,6 +295,45 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # React Native Frontend (Development Server - Mobile/Expo Go)
+  frontend-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development  # Development server for Expo Go
+    container_name: cursor-raffle-frontend-dev-prod
+    environment:
+      EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-http://31.97.126.71:8080/api}
+      NODE_ENV: development
+      EXPO_NO_INTERACTIVE: "1"
+    ports:
+      - "8081:8081"  # Expo dev server port
+      - "19000:19000"  # Expo dev tools
+      - "19001:19001"  # Expo dev tools
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - cursor-raffle-network-prod
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.expo
+    stdin_open: true
+    tty: true
+    command: >
+      sh -c "
+        if [ ! -d node_modules ] || [ -z \"$(ls -A node_modules 2>/dev/null)\" ]; then
+          echo '🧩 Installing deps...'; (npm ci || npm install --no-audit --no-fund);
+        fi;
+        npx expo start --tunnel --port 8081"
     logging:
       driver: "json-file"
       options:
