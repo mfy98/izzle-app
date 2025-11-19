@@ -283,7 +283,7 @@ services:
       EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-http://31.97.126.71:8080/api}
       NODE_ENV: production
     ports:
-      - "80:8081"  # Standard HTTP port (HTTPS için Nginx reverse proxy kullanın)
+      - "127.0.0.1:8081:8081"  # Standard HTTP port (HTTPS için Nginx reverse proxy kullanın)
     depends_on:
       backend:
         condition: service_started
