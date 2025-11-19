@@ -24,7 +24,7 @@ public class SecurityConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers("/api/auth/**", "/api/time/**").permitAll()
+                        .pathMatchers("/api/auth/**", "/api/time/**", "/actuator/**").permitAll()
                         .anyExchange().permitAll() // For demo simplicity allow all, normally authenticate
                 )
                 .build();
