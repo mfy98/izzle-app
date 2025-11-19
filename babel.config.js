@@ -9,9 +9,6 @@ module.exports = function(api) {
         'babel-preset-expo',
         {
           jsxRuntime: 'automatic',
-          web: {
-            useTransformReactJSXExperimental: true,
-          },
         },
       ],
     ],
