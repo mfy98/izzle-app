@@ -1,0 +1,79 @@
+version: '3.8'
+
+# Development docker-compose with hot reload
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cursor-raffle-db-dev
+    environment:
+      POSTGRES_DB: cursor_raffle
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - cursor-raffle-network-dev
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cursor-raffle-backend-dev
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cursor_raffle
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: 1234
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DEVTOOLS_RESTART_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend/src:/app/src
+    depends_on:
+      - postgres
+    networks:
+      - cursor-raffle-network-dev
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # --- THIS IS THE KEY CHANGE ---
+      # Tells Docker to build ONLY the 'development' stage
+      target: development
+    container_name: cursor-raffle-frontend-dev
+    environment:
+      # --- THIS IS THE OTHER KEY CHANGE ---
+      # Use the 'backend' service name, not 'localhost'
+      EXPO_PUBLIC_API_URL: http://backend:8080/api
+      NODE_ENV: development
+    ports:
+      - "8081:8081"
+      - "19000:19000"
+      - "19001:19001"
+    volumes:
+      # Mount your local code for hot-reloading
+      - .:/app
+      # Anonymous volumes to protect node_modules and .expo
+      - /app/node_modules
+      - /app/.expo
+    depends_on:
+      - backend
+    networks:
+      - cursor-raffle-network-dev
+    stdin_open: true
+    tty: true
+    # We can remove the 'command' here, as the 'development'
+    # stage in the Dockerfile now has the correct CMD.
+
+volumes:
+  postgres_data_dev:
+    driver: local
+
+networks:
+  cursor-raffle-network-dev:
+    driver: bridge

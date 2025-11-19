@@ -1,0 +1,22 @@
+# Docker-specific configuration
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/cursor_raffle}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:1234}
+  
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+  
+  security:
+    jwt:
+      secret: ${SPRING_SECURITY_JWT_SECRET:nMkXfbj5NFeUKZiJhvxQqW9DgTYsrCO0a6HB4GAEm8ol3IRzScuVw1LydP72tp}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    com.cursorraffle: ${LOG_LEVEL:INFO}
+

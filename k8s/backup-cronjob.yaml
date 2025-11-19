@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backup-sa
+  namespace: cursor-raffle
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: cursor-raffle
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: backup-sa
+          containers:
+          - name: postgres-backup
+            image: postgres:16-alpine
+            command:
+            - /bin/sh
+            - -c
+            - |
+              export PGPASSWORD=1234
+              BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+              BACKUP_DIR="/backups/basebackup_${BACKUP_DATE}"
+              
+              # Create backup
+              pg_basebackup \
+                -h postgres-service \
+                -U postgres \
+                -D "${BACKUP_DIR}" \
+                -Ft \
+                -z \
+                -P \
+                -v
+              
+              # Upload to S3 or backup storage (optional)
+              # aws s3 cp "${BACKUP_DIR}" s3://your-bucket/backups/ --recursive
+              
+              echo "Backup completed: ${BACKUP_DIR}"
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backups
+            env:
+            - name: POSTGRES_HOST
+              value: postgres-service
+            - name: POSTGRES_USER
+              value: postgres
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "512Mi"
+                cpu: "500m"
+          restartPolicy: OnFailure
+          volumes:
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: backup-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backup-pvc
+  namespace: cursor-raffle
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+

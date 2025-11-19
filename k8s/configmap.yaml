@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cursor-raffle-config
+  namespace: cursor-raffle
+data:
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres-service:5432/cursor_raffle"
+  SPRING_DATASOURCE_USERNAME: "postgres"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+  SERVER_PORT: "8080"
+  SPRING_PROFILES_ACTIVE: "kubernetes"
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,prometheus,metrics"
+  MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+  EXPO_PUBLIC_API_URL: "http://backend-service:8080/api"
+  NODE_ENV: "production"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cursor-raffle-secrets
+  namespace: cursor-raffle
+type: Opaque
+stringData:
+  SPRING_DATASOURCE_PASSWORD: "1234"
+  SPRING_SECURITY_JWT_SECRET: "nMkXfbj5NFeUKZiJhvxQqW9DgTYsrCO0a6HB4GAEm8ol3IRzScuVw1LydP72tp"
+  POSTGRES_PASSWORD: "1234"
+  POSTGRES_USER: "postgres"
+
