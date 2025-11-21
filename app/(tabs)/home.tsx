@@ -3,11 +3,10 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { SprintTimer } from '@/components/raffle/SprintTimer';
-import { AdCover } from '@/components/ads/AdCover';
 import { AdBanner, MultiBannerAds } from '@/components/ads';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
 import { FadeInView, SlideInView } from '@/components/ui';
-import { WeeklySponsor } from '@/components/home/WeeklySponsor';
+import { WeeklySponsor, DailySponsor, MonthlySponsor, SponsorInfoCard } from '@/components/home';
 import { GamesSection } from '@/components/games/GamesSection';
 import { colors, sizes } from '@/constants';
 import { useRaffleStore } from '@/store/raffleStore';
@@ -15,17 +14,95 @@ import { useSprint } from '@/hooks/useSprint';
 import { useAds } from '@/hooks/useAds';
 import { Ad } from '@/types/ad';
 import { router } from 'expo-router';
-import { apiClient } from '@/services/api/client';
-import { formatCurrency } from '@/utils/formatting';
+
+type SponsorSlide =
+  | {
+      id: string;
+      component: 'sponsor';
+      sponsorName: string;
+      sponsorDescription: string;
+    }
+  | {
+      id: string;
+      component: 'info';
+      title: string;
+      subtitle: string;
+      highlights: string[];
+      gradient: [string, string, string];
+    };
+
+const MONTHLY_SLIDES: SponsorSlide[] = [
+  {
+    id: 'monthly-main',
+    component: 'sponsor',
+    sponsorName: 'MegaCorp',
+    sponsorDescription: 'Aylık sponsorluk - 500.000 ₺ teklif ile en üst seviye sponsorluk',
+  },
+  {
+    id: 'monthly-info',
+    component: 'info',
+    title: 'MegaCorp Premium Kampanyası',
+    subtitle: 'Aylık sponsorluğun avantajları',
+    highlights: [
+      'Aylık toplam ödül havuzunu %30 artırır',
+      'MegaCorp kullanıcılarına özel sürpriz ödüller',
+      'Her hafta ekstra çekiliş hakkı dağıtır',
+    ],
+    gradient: ['#10B981', '#059669', '#047857'],
+  },
+];
+
+const WEEKLY_SLIDES: SponsorSlide[] = [
+  {
+    id: 'weekly-main',
+    component: 'sponsor',
+    sponsorName: 'GlobalBrand',
+    sponsorDescription: 'Haftalık sponsorluk - 150.000 ₺ teklif ile premium deneyim',
+  },
+  {
+    id: 'weekly-info',
+    component: 'info',
+    title: 'GlobalBrand Haftalık Özet',
+    subtitle: 'Haftalık sponsorluğun sundukları',
+    highlights: [
+      'Her gün 2 özel reklam yayını',
+      'Haftalık çekilişte 5 ekstra kazanan',
+      'İzleyenlere anında bonus puan',
+    ],
+    gradient: ['#6366F1', '#8B5CF6', '#A855F7'],
+  },
+];
+
+const DAILY_SLIDES: SponsorSlide[] = [
+  {
+    id: 'daily-main',
+    component: 'sponsor',
+    sponsorName: 'TechCorp',
+    sponsorDescription: 'Günlük sponsorluk - 25.000 ₺ teklif ile özel fırsatlar',
+  },
+  {
+    id: 'daily-info',
+    component: 'info',
+    title: 'TechCorp Günlük Fırsat',
+    subtitle: 'Bugüne özel kampanyalar',
+    highlights: [
+      'Saatlik mini görevlerle bonus kazan',
+      'TechCorp ürünlerinde %10 indirim',
+      'İlk 100 izleyiciye ekstra hak',
+    ],
+    gradient: ['#F59E0B', '#F97316', '#EF4444'],
+  },
+];
 
 export default function HomeScreen() {
   const { myTickets, myMultiplier } = useRaffleStore();
   const { currentSprint, fetchCurrentSprint } = useSprint();
-  const { getCoverAd, getBannerAds } = useAds();
-  const [coverAd, setCoverAd] = useState<Ad | null>(null);
+  const { getBannerAds } = useAds();
   const [bannerAds, setBannerAds] = useState<Ad[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeSponsorships, setActiveSponsorships] = useState<any[]>([]);
+  const [monthlySlideIndex, setMonthlySlideIndex] = useState(0);
+  const [weeklySlideIndex, setWeeklySlideIndex] = useState(0);
+  const [dailySlideIndex, setDailySlideIndex] = useState(0);
 
   useEffect(() => {
     const loadData = async () => {
@@ -34,31 +111,107 @@ export default function HomeScreen() {
       // Load sprint data
       await fetchCurrentSprint();
       
-      // Load cover ad
-      const coverResult = await getCoverAd();
-      if (coverResult.success && coverResult.data) {
-        setCoverAd(coverResult.data);
-      }
-      
       // Load banner ads
       const bannerResult = await getBannerAds();
       if (bannerResult.success && bannerResult.data) {
         setBannerAds(bannerResult.data);
       }
       
-      // Load active sponsorships
-      try {
-        const sponsorshipRes = await apiClient.get('/sponsorship/active');
-        setActiveSponsorships(sponsorshipRes.data || []);
-      } catch (error) {
-        console.error('Error loading sponsorships:', error);
-      }
-      
       setIsLoading(false);
     };
 
     loadData();
-  }, [fetchCurrentSprint, getCoverAd, getBannerAds]);
+  }, [fetchCurrentSprint, getBannerAds]);
+
+  // Monthly carousel
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMonthlySlideIndex((prev) => (prev + 1) % MONTHLY_SLIDES.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Weekly carousel
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWeeklySlideIndex((prev) => (prev + 1) % WEEKLY_SLIDES.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Daily carousel
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDailySlideIndex((prev) => (prev + 1) % DAILY_SLIDES.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const renderMonthlySlide = () => {
+    const slide = MONTHLY_SLIDES[monthlySlideIndex];
+    if (slide.component === 'sponsor') {
+      return (
+        <MonthlySponsor
+          sponsorName={slide.sponsorName}
+          sponsorDescription={slide.sponsorDescription}
+          onPress={() => console.log('Monthly sponsor pressed')}
+        />
+      );
+    }
+    return (
+      <SponsorInfoCard
+        title={slide.title}
+        subtitle={slide.subtitle}
+        highlights={slide.highlights}
+        gradient={slide.gradient}
+      />
+    );
+  };
+
+  const renderWeeklySlide = () => {
+    const slide = WEEKLY_SLIDES[weeklySlideIndex];
+    if (slide.component === 'sponsor') {
+      return (
+        <WeeklySponsor
+          sponsorName={slide.sponsorName}
+          sponsorDescription={slide.sponsorDescription}
+          onPress={() => console.log('Weekly sponsor pressed')}
+        />
+      );
+    }
+    return (
+      <SponsorInfoCard
+        title={slide.title}
+        subtitle={slide.subtitle}
+        highlights={slide.highlights}
+        gradient={slide.gradient}
+      />
+    );
+  };
+
+  const renderDailySlide = () => {
+    const slide = DAILY_SLIDES[dailySlideIndex];
+    if (slide.component === 'sponsor') {
+      return (
+        <DailySponsor
+          sponsorName={slide.sponsorName}
+          sponsorDescription={slide.sponsorDescription}
+          onPress={() => console.log('Daily sponsor pressed')}
+        />
+      );
+    }
+    return (
+      <SponsorInfoCard
+        title={slide.title}
+        subtitle={slide.subtitle}
+        highlights={slide.highlights}
+        gradient={slide.gradient}
+      />
+    );
+  };
 
   if (isLoading) {
     return (
@@ -92,24 +245,20 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {coverAd && (
-          <FadeInView duration={500}>
-            <AdCover ad={coverAd} />
-          </FadeInView>
-        )}
+        {/* Monthly Sponsor Carousel */}
+        <FadeInView key={`monthly-${monthlySlideIndex}`} duration={500}>
+          {renderMonthlySlide()}
+        </FadeInView>
 
-        {/* Active Sponsorships */}
-        {activeSponsorships.length > 0 && activeSponsorships.map((sponsorship) => (
-          <FadeInView key={sponsorship.id} duration={500} delay={150}>
-            <WeeklySponsor
-              sponsorName={sponsorship.advertiserName}
-              sponsorDescription={`${sponsorship.type === 'DAILY' ? 'Günlük' : sponsorship.type === 'WEEKLY' ? 'Haftalık' : 'Aylık'} sponsorluk - ${formatCurrency(sponsorship.bidAmount)} teklif`}
-              onPress={() => {
-                console.log('Sponsor pressed:', sponsorship);
-              }}
-            />
-          </FadeInView>
-        ))}
+        {/* Weekly Sponsor Carousel */}
+        <FadeInView key={`weekly-${weeklySlideIndex}`} duration={500} delay={100}>
+          {renderWeeklySlide()}
+        </FadeInView>
+
+        {/* Daily Sponsor Carousel */}
+        <FadeInView key={`daily-${dailySlideIndex}`} duration={500} delay={200}>
+          {renderDailySlide()}
+        </FadeInView>
 
         {currentSprint && (
           <SlideInView direction="up" duration={400} delay={100}>
@@ -121,8 +270,7 @@ export default function HomeScreen() {
           <FadeInView duration={400} delay={300}>
             <MultiBannerAds 
               ads={bannerAds} 
-              onAdPress={(ad) => {
-                // Handle banner ad press - could navigate to advertiser page or ad details
+              onAdPress={(ad: Ad) => {
                 console.log('Banner ad pressed:', ad.id);
               }}
             />
@@ -140,6 +288,26 @@ export default function HomeScreen() {
               <View style={styles.statItem}>
                 <Text style={styles.statLabel}>Çarpanınız</Text>
                 <Text style={styles.statValue}>x{myMultiplier.toFixed(2)}</Text>
+              </View>
+            </View>
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>İzlenen Reklam</Text>
+                <Text style={styles.statValue}>42</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Kazanılan Ödül</Text>
+                <Text style={styles.statValue}>3</Text>
+              </View>
+            </View>
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Toplam Puan</Text>
+                <Text style={styles.statValue}>1.250</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Sıralama</Text>
+                <Text style={styles.statValue}>#127</Text>
               </View>
             </View>
           </Card>
@@ -222,6 +390,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingVertical: sizes.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    marginBottom: sizes.sm,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: sizes.sm,
   },
   statItem: {
     alignItems: 'center',

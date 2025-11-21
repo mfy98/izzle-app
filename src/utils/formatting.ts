@@ -90,3 +90,28 @@ export const formatMultiplier = (multiplier: number): string => {
   return multiplier.toFixed(2).replace('.', ',');
 };
 
+/**
+ * Format date to Turkish format (dd.MM.yyyy)
+ */
+export const formatDateTurkish = (date: string | Date): string => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return format(dateObj, 'dd.MM.yyyy', { locale: tr });
+};
+
+/**
+ * Format number with thousand separators (for input display)
+ */
+export const formatNumberInput = (value: string): string => {
+  // Remove all non-digit characters
+  const numbers = value.replace(/\D/g, '');
+  // Add thousand separators
+  return numbers.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+
+/**
+ * Parse formatted number (remove separators)
+ */
+export const parseFormattedNumber = (value: string): string => {
+  return value.replace(/\./g, '');
+};
+

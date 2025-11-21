@@ -1,18 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Card } from '@/components/ui/Card';
 import { colors, sizes } from '@/constants';
 
-interface WeeklySponsorProps {
+interface MonthlySponsorProps {
   sponsorName: string;
   sponsorDescription: string;
   imageUrl?: string;
   onPress?: () => void;
 }
 
-export const WeeklySponsor: React.FC<WeeklySponsorProps> = ({
+export const MonthlySponsor: React.FC<MonthlySponsorProps> = ({
   sponsorName,
   sponsorDescription,
   imageUrl,
@@ -22,18 +22,27 @@ export const WeeklySponsor: React.FC<WeeklySponsorProps> = ({
     <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
       <Card style={styles.card}>
         <LinearGradient
-          colors={['#6366F1', '#8B5CF6', '#A855F7']}
+          colors={['#10B981', '#059669', '#047857']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
         >
           <View style={styles.content}>
+            <View style={styles.header}>
+              <View style={styles.badge}>
+                <MaterialCommunityIcons name="crown" size={20} color="#FFD700" />
+                <Text style={styles.badgeText}>Aylık Sponsor</Text>
+              </View>
+            </View>
+
             <View style={styles.sponsorInfo}>
               {imageUrl ? (
-                <Image source={{ uri: imageUrl }} style={styles.image} />
+                <View style={styles.imagePlaceholder}>
+                  <MaterialCommunityIcons name="image" size={48} color="#FFFFFF" />
+                </View>
               ) : (
                 <View style={styles.placeholderImage}>
-                  <MaterialCommunityIcons name="image" size={48} color="#FFFFFF" />
+                  <MaterialCommunityIcons name="trophy" size={48} color="#FFFFFF" />
                 </View>
               )}
               
@@ -44,7 +53,7 @@ export const WeeklySponsor: React.FC<WeeklySponsorProps> = ({
             </View>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Özel İndirimler ve Fırsatlar</Text>
+              <Text style={styles.footerText}>Premium Sponsorluk Paketi</Text>
               <MaterialCommunityIcons name="arrow-right" size={20} color="#FFFFFF" />
             </View>
           </View>
@@ -71,16 +80,36 @@ const styles = StyleSheet.create({
   content: {
     gap: 16,
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
   sponsorInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
   },
-  image: {
+  imagePlaceholder: {
     width: 80,
     height: 80,
     borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   placeholderImage: {
     width: 80,
@@ -118,5 +147,4 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
-
 

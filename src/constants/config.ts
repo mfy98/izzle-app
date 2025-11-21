@@ -9,7 +9,7 @@ import Constants from 'expo-constants';
 //                 Mac/Linux: ifconfig | grep "inet "
 // Option 3: Use VPS IP directly (replace with your VPS IP)
 const VPS_IP = 'YOUR_VPS_IP_HERE'; // ⚠️ Replace with your VPS IP (e.g., '185.123.45.67')
-const LOCAL_IP = '192.168.1.4'; // ⚠️ Your local network IP for development
+const LOCAL_IP = '192.168.1.100'; // ⚠️ Your local network IP for development
 
 // Choose which IP to use (VPS for production, LOCAL for development)
 const USE_VPS = false; // Set to true to use VPS IP

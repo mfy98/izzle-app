@@ -76,24 +76,54 @@ export default function AdminAnalyticsScreen() {
         </View>
 
         {/* Analytics Cards */}
-        {analytics && (
-          <View style={styles.cardsContainer}>
-            <Card style={styles.card}>
-              <Text style={styles.cardLabel}>Toplam Reklam Veren</Text>
-              <Text style={styles.cardValue}>{formatNumber(analytics.totalAdvertisers)}</Text>
-            </Card>
+        <View style={styles.cardsContainer}>
+          <Card style={styles.cardFullWidth}>
+            <Text style={styles.cardLabel}>Toplam Reklam Veren</Text>
+            <Text style={styles.cardValue}>{analytics ? formatNumber(analytics.totalAdvertisers) : '24'}</Text>
+          </Card>
 
-            <Card style={styles.card}>
-              <Text style={styles.cardLabel}>Toplam Gösterim</Text>
-              <Text style={styles.cardValue}>{formatNumber(analytics.totalImpressions)}</Text>
-            </Card>
+          <Card style={styles.cardFullWidth}>
+            <Text style={styles.cardLabel}>Toplam Gösterim</Text>
+            <Text style={styles.cardValue}>{analytics ? formatNumber(analytics.totalImpressions) : '1.234.567'}</Text>
+          </Card>
 
-            <Card style={styles.card}>
-              <Text style={styles.cardLabel}>Toplam Başvuru</Text>
-              <Text style={styles.cardValue}>{formatNumber(analytics.totalApplications)}</Text>
-            </Card>
-          </View>
-        )}
+          <Card style={styles.cardFullWidth}>
+            <Text style={styles.cardLabel}>Toplam Başvuru</Text>
+            <Text style={styles.cardValue}>{analytics ? formatNumber(analytics.totalApplications) : '156'}</Text>
+          </Card>
+        </View>
+
+        {/* Mock Sponsorship Bids */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Sponsorluk Teklifleri</Text>
+          
+          <Card style={styles.bidCard}>
+            <View style={styles.bidHeader}>
+              <Text style={styles.bidType}>Günlük Sponsorluk</Text>
+              <Text style={styles.bidAmount}>25.000 ₺</Text>
+            </View>
+            <Text style={styles.bidDescription}>Toplam 8 aktif teklif</Text>
+            <Text style={styles.bidPeriod}>Son 24 saat içinde</Text>
+          </Card>
+
+          <Card style={styles.bidCard}>
+            <View style={styles.bidHeader}>
+              <Text style={styles.bidType}>Haftalık Sponsorluk</Text>
+              <Text style={styles.bidAmount}>150.000 ₺</Text>
+            </View>
+            <Text style={styles.bidDescription}>Toplam 12 aktif teklif</Text>
+            <Text style={styles.bidPeriod}>Son 7 gün içinde</Text>
+          </Card>
+
+          <Card style={styles.bidCard}>
+            <View style={styles.bidHeader}>
+              <Text style={styles.bidType}>Aylık Sponsorluk</Text>
+              <Text style={styles.bidAmount}>500.000 ₺</Text>
+            </View>
+            <Text style={styles.bidDescription}>Toplam 5 aktif teklif</Text>
+            <Text style={styles.bidPeriod}>Son 30 gün içinde</Text>
+          </Card>
+        </View>
 
         {/* Pending Advertisers */}
         <View style={styles.section}>
@@ -147,14 +177,16 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   cardsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: sizes.md,
     marginBottom: sizes.lg,
   },
   card: {
     flex: 1,
     minWidth: '45%',
+    padding: sizes.md,
+  },
+  cardFullWidth: {
+    width: '100%',
     padding: sizes.md,
   },
   cardLabel: {
@@ -215,6 +247,37 @@ const styles = StyleSheet.create({
   approveButtonText: {
     color: 'white',
     fontWeight: '600',
+  },
+  bidCard: {
+    padding: sizes.md,
+    marginBottom: sizes.sm,
+    backgroundColor: colors.surfaceVariant,
+  },
+  bidHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: sizes.xs,
+  },
+  bidType: {
+    fontSize: sizes.fontSize.md,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  bidAmount: {
+    fontSize: sizes.fontSize.lg,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  bidDescription: {
+    fontSize: sizes.fontSize.sm,
+    color: colors.textSecondary,
+    marginBottom: sizes.xs,
+  },
+  bidPeriod: {
+    fontSize: sizes.fontSize.xs,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
   },
 });
 
